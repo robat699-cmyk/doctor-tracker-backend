@@ -10,6 +10,7 @@ import patientsRouter from './routes/patients.js';
 import analyticsRouter from './routes/analytics.js';
 import bookingsRouter from './routes/bookings.js';
 import remindersRouter from './routes/reminders.js';
+import assistantRouter from './routes/assistant.js';
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 5000;
@@ -59,6 +60,7 @@ app.use('/api/v1/patients', patientsRouter);
 app.use('/api/v1/analytics', analyticsRouter);
 app.use('/api/v1/bookings', bookingsRouter);
 app.use('/api/v1/reminders', remindersRouter);
+app.use('/api/v1/assistant', assistantRouter);
 
 // 404 Handler
 app.use('/api', (_req, res) => {

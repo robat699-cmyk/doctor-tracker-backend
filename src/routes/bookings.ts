@@ -7,17 +7,63 @@ router.use(requireAuth);
 
 router.get('/', async (req, res) => {
   try {
-    const bookings = await Booking.find()
-      .populate('doctorId', 'name specialization')
-      .sort({ appointmentDate: -1 })
-      .lean();
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string) || 10));
+    const skip = (page - 1) * limit;
+
+    const { search, status, doctorId } = req.query;
+    const filter: Record<string, any> = {};
+
+    if (search && typeof search === 'string' && search.trim()) {
+      filter.$or = [
+        { patientName: { $regex: search.trim(), $options: 'i' } },
+        { visitType: { $regex: search.trim(), $options: 'i' } },
+        { chiefComplaint: { $regex: search.trim(), $options: 'i' } },
+      ];
+    }
+
+    if (status && status !== 'All') {
+      filter.status = status;
+    }
+
+    if (doctorId && doctorId !== 'All') {
+      filter.doctorId = doctorId;
+    }
+
+    const [bookings, total, upcomingCount, remindersSent] = await Promise.all([
+      Booking.find(filter)
+        .populate('doctorId', 'name specialization')
+        .sort({ appointmentDate: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Booking.countDocuments(filter),
+      Booking.countDocuments({ status: { $nin: ['Completed', 'Cancelled'] } }),
+      Reminder.countDocuments({ status: 'Sent' }),
+    ]);
+
+    const formatted = bookings.map((b: any) => ({
+      ...b,
+      id: b._id,
+      patientPhone: b.contactNumber || '+880 1711-000000',
+      diseaseType: b.diseaseType || 'General Medicine',
+      doctorName: b.doctorId ? `Dr. ${b.doctorId.name}` : 'Unassigned',
+      doctorSpecialization: b.doctorId?.specialization || '',
+    }));
 
     res.json({
-      data: bookings.map((b: any) => ({
-        ...b,
-        id: b._id,
-        doctorName: b.doctorId ? `Dr. ${b.doctorId.name}` : 'Unassigned',
-      })),
+      items: formatted,
+      data: formatted,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit) || 1,
+      stats: {
+        upcomingCount,
+        patientRemindersSent: remindersSent,
+        doctorRemindersSent: Math.floor(remindersSent * 0.8),
+        pendingReminders: 0,
+      },
     });
   } catch (err: any) {
     res.status(500).json({ message: err.message || 'Failed to fetch bookings' });

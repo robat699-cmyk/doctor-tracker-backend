@@ -74,7 +74,12 @@ router.get('/', async (req, res) => {
     }));
 
     res.json({
+      items: doctorsWithCounts,
       data: doctorsWithCounts,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit) || 1,
       meta: {
         total,
         page,

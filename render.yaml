@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: doctor-tracker-backend
+    runtime: node
+    plan: free
+    buildCommand: bun install && bun run build || npm install && npm run build
+    startCommand: bun run start || npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: MONGODB_URI
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
